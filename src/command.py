@@ -111,7 +111,7 @@ class CycloneDXCommand:
             'dependencies': [],
         }
         for node in deps_graph.nodes:
-            if node.ref is None:
+            if node.ref is None or node.ref.name is None:
                 # top level component
                 bom['metadata']['component']['name'] = os.path.basename(os.path.dirname(node.path))
                 bom['metadata']['component']['bom-ref'] = bom['metadata']['component']['name'] + '@' + bom['metadata']['component']['version']
@@ -131,9 +131,11 @@ class CycloneDXCommand:
                     'name': node.ref.name,
                     'version': node.ref.version,
                     'purl': str(purl),
+                    'licenses': construct_licenses(node)
                 }
                 if node.ref.user:
                     component['namespace'] = node.ref.user
+
                 bom['components'].append(component)
                 dependencies = {
                     'ref': component['bom-ref'],
@@ -156,6 +158,16 @@ def get_purl(remote, ref):
     purl = PackageURL(type='conan', namespace=ref.user, name=ref.name, version=ref.version, qualifiers=qualifiers)
     return purl
 
+def construct_licenses(node):
+    licenses = []
+
+    if node.conanfile.license is not None: 
+        license = {
+            'id' : str(node.conanfile.license)
+        }
+        licenses.append({'license' : license})
+
+    return licenses
 
 def main():
     parser = CycloneDXCommand.get_arg_parser()
