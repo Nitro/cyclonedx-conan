@@ -22,6 +22,7 @@ import argparse
 import json
 import os.path
 import sys
+import re
 from uuid import uuid4
 from conans.client.conan_api import Conan, ProfileData
 from conans.client.command import Command as ConanCommand, OnceArgument, Extender, _add_common_install_arguments
@@ -40,6 +41,9 @@ class CycloneDXCommand:
     @staticmethod
     def get_arg_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(description='CycloneDX SBOM Generator')
+
+        parser.add_argument("--strip_nitro_versions", dest="strip_nitrovers", action='store_true')
+        parser.set_defaults(strip_nitrovers=True)
 
         parser.add_argument("path_or_reference", help="Path to a folder containing a recipe"
                             " (conanfile.py or conanfile.txt) or to a recipe file. e.g., "
@@ -129,7 +133,7 @@ class CycloneDXCommand:
                     'bom-ref': str(purl),
                     'type': 'library',
                     'name': node.ref.name,
-                    'version': node.ref.version,
+                    'version': construct_version(node.ref.version, self._arguments.strip_nitrovers),
                     'purl': str(purl),
                     'licenses': construct_licenses(node)
                 }
@@ -168,6 +172,12 @@ def construct_licenses(node):
         licenses.append({'license' : license})
 
     return licenses
+
+def construct_version(version, strip_nitrovers):
+    if strip_nitrovers:
+        version = re.sub(r'_nitro_[0-9]*', '', version, flags=re.IGNORECASE)
+    
+    return version
 
 def main():
     parser = CycloneDXCommand.get_arg_parser()
